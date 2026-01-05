@@ -5,6 +5,9 @@ build/
 *.vcxproj.user
 .vs/
 
+# VS Code (local editor settings)
+.vscode/
+
 # CMake
 CMakeCache.txt
 CMakeFiles/

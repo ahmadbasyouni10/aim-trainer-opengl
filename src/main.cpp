@@ -33,6 +33,26 @@ void main() {
 }
 )";
 
+const char* crosshairVertexSource = R"(
+#version 330 core
+layout(location = 0) in vec2 aPos;
+uniform vec3 color;
+out vec3 vertexColor;
+void main() {
+    gl_Position = vec4(aPos, 0.0, 1.0);
+    vertexColor = color;
+}
+)";
+
+const char* crosshairFragmentSource = R"(
+#version 330 core
+in vec3 vertexColor;
+out vec4 FragColor;
+void main() {
+    FragColor = vec4(vertexColor, 1.0);
+}
+)";
+
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -42,6 +62,9 @@ float pitch = 0.0f;
 float lastX = 400.0f;
 float lastY = 300.0f;
 bool firstMouse = true;
+
+float deltaTime = 0.0f;  
+float lastFrame = 0.0f;
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (firstMouse) {
@@ -221,11 +244,59 @@ int main() {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    float crosshairSize = 0.02f;
+    float crosshairVertices[] = {
+
+        -crosshairSize, 0.0f,
+         crosshairSize, 0.0f,
+       
+        0.0f, -crosshairSize * (800.0f/600.0f),
+        0.0f,  crosshairSize * (800.0f/600.0f),
+    };
+
+    unsigned int crosshairVAO, crosshairVBO;
+    glGenVertexArrays(1, &crosshairVAO);
+    glGenBuffers(1, &crosshairVBO);
+    glBindVertexArray(crosshairVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, crosshairVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(crosshairVertices), crosshairVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    unsigned int chVertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(chVertexShader, 1, &crosshairVertexSource, NULL);
+    glCompileShader(chVertexShader);
+
+    unsigned int chFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(chFragmentShader, 1, &crosshairFragmentSource, NULL);
+    glCompileShader(chFragmentShader);
+
+    unsigned int crosshairShader = glCreateProgram();
+    glAttachShader(crosshairShader, chVertexShader);
+    glAttachShader(crosshairShader, chFragmentShader);
+    glLinkProgram(crosshairShader);
+
+    glDeleteShader(chVertexShader);
+    glDeleteShader(chFragmentShader);
+
     glEnable(GL_DEPTH_TEST);
     
     while (!glfwWindowShouldClose(window)) {
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
+
+        float cameraSpeed = 2.5f * deltaTime;  
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            cameraPos += cameraSpeed * cameraFront;          
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            cameraPos -= cameraSpeed * cameraFront;          
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 
         glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -265,6 +336,14 @@ int main() {
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glDisable(GL_DEPTH_TEST); 
+        glUseProgram(crosshairShader);
+        glUniform3f(glGetUniformLocation(crosshairShader, "color"), 1.0f, 0.4f, 0.7f);
+        glBindVertexArray(crosshairVAO);
+        glLineWidth(2.0f);  
+        glDrawArrays(GL_LINES, 0, 4);
+        glEnable(GL_DEPTH_TEST);  
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -272,6 +351,9 @@ int main() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
+    glDeleteVertexArrays(1, &crosshairVAO);
+    glDeleteBuffers(1, &crosshairVBO);
+    glDeleteProgram(crosshairShader);
 
     glfwTerminate();
     return 0;

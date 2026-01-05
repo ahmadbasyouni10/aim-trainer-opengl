@@ -1,5 +1,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 
 const char* vertexShaderSource = R"(
@@ -9,8 +12,12 @@ layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aColor; 
 out vec3 vertexColor;
 
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
 void main() {
-    gl_Position = vec4(aPos, 1.0);  
+    gl_Position = projection * view * model * vec4(aPos, 1.0);  
     vertexColor = aColor;            
 }
 )";
@@ -56,9 +63,47 @@ int main() {
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
 
     float vertices[] = {
-        -0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,   
-         0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,  
-         0.0f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f   
+        -0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,  
+        0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,  
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f, 
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f, 
+        -0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f, 
+        -0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
+        
+        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+        
+        -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,   0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+
+        0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,   1.0f, 1.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,   1.0f, 1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 0.0f,
+
+        -0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,
+
+        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
     };
 
     unsigned int VBO, VAO;
@@ -125,13 +170,44 @@ int main() {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    glEnable(GL_DEPTH_TEST);
+
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(shaderProgram);
+
+        glm::mat4 model = glm::mat4(1.0f);
+        float time = glfwGetTime();
+        model = glm::rotate(model, time, glm::vec3(0.5f, 1.0f, 0.0f));
+
+        glm::mat4 view = glm::mat4(1.0f);
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        
+        glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f), 
+            800.0f / 600.0f,     
+            0.1f,                
+            100.0f               
+        );
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(shaderProgram, "model"), 
+            1, 
+            GL_FALSE, 
+            glm::value_ptr(model)
+        );
+        glUniformMatrix4fv(
+            glGetUniformLocation(shaderProgram, "view"),
+            1, GL_FALSE, glm::value_ptr(view)
+        );
+        glUniformMatrix4fv(
+            glGetUniformLocation(shaderProgram, "projection"),
+            1, GL_FALSE, glm::value_ptr(projection)
+        );
+
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }

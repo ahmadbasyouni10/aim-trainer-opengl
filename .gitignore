@@ -1,0 +1,10 @@
+# Build output
+build/
+
+# Visual Studio
+*.vcxproj.user
+.vs/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/

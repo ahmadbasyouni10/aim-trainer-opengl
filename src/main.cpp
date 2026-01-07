@@ -19,6 +19,7 @@ float randomFloat(float min, float max) {
     return dist(gen);
 }
 
+// Need to change this to make sure x and y never intersect like even slightly but still close like with space how kovaaks does it
 std::vector<Target> spawnTargets(int count, float minDistance) {
     std::vector<Target> targets;
     
@@ -30,8 +31,8 @@ std::vector<Target> spawnTargets(int count, float minDistance) {
         while (!validPosition && attempts < 100) {
             newPos = glm::vec3(
                 randomFloat(-4.0f, 4.0f),  
-                randomFloat(-2.0f, 2.0f),  
-                randomFloat(-10.0f, -5.0f)  
+                randomFloat(-2.5f, 2.5f),   
+                -8.0f                       
             );
             
             validPosition = true;
@@ -112,6 +113,8 @@ bool firstMouse = true;
 
 float deltaTime = 0.0f;  
 float lastFrame = 0.0f;
+int score = 0;
+std::vector<Target>* targetsPtr = nullptr;
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (firstMouse) {
@@ -125,7 +128,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.0062f;
+    float sensitivity = 0.042f;
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
@@ -145,6 +148,63 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     cameraFront = glm::normalize(direction);
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        glm::vec3 rayOrigin = cameraPos;
+        glm::vec3 rayDirection = glm::normalize(cameraFront);
+
+        for (size_t i = 0; i < targetsPtr->size(); i++) {
+            Target& target = (*targetsPtr)[i];
+            
+            glm::vec3 boxMin = target.position - glm::vec3(0.5f);
+            glm::vec3 boxMax = target.position + glm::vec3(0.5f);
+
+            float tMin = 0.0f;
+            float tMax = 100.0f;
+
+            bool hit = true;
+            for (int axis = 0; axis < 3; axis++) {
+                float origin = rayOrigin[axis]; 
+                float dir = rayDirection[axis];          
+                float bMin = boxMin[axis];       
+                float bMax = boxMax[axis];        
+                
+                if (std::abs(dir) < 0.0001f) {
+                    if (origin < bMin || origin > bMax) {
+                        hit = false;
+                        break;
+                    }
+                } else {
+                    float t1 = (bMin - origin) / dir; 
+                    float t2 = (bMax - origin) / dir;
+                    
+                    if (t1 > t2) std::swap(t1, t2);
+                    
+                    tMin = std::max(tMin, t1);  
+                    tMax = std::min(tMax, t2); 
+                    
+                    if (tMin > tMax) {
+                        hit = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (hit && tMin > 0) {
+                score++;
+                std::cout << "HIT! Score: " << score << std::endl;
+                
+                target.position = glm::vec3(
+                    randomFloat(-4.0f, 4.0f),
+                    randomFloat(-2.5f, 2.5f),
+                    -8.0f
+                );
+                
+                break; 
+            }
+        }
+    }
+}
 
 int main() {
     if (!glfwInit()) { 
@@ -173,6 +233,7 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
     
     glewExperimental = GL_TRUE;
 
@@ -320,7 +381,8 @@ int main() {
 
     glDeleteShader(chVertexShader);
     glDeleteShader(chFragmentShader);
-    std::vector<Target> targets = spawnTargets(5, 2.0f);
+    std::vector<Target> targets = spawnTargets(3, 2.0f);
+    targetsPtr = &targets;
 
     glEnable(GL_DEPTH_TEST);
     

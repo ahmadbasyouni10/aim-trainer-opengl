@@ -4,6 +4,53 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <vector>
+#include <random>
+
+struct Target {
+    glm::vec3 position;
+};
+
+std::random_device rd;
+std::mt19937 gen(rd());
+
+float randomFloat(float min, float max) {
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(gen);
+}
+
+std::vector<Target> spawnTargets(int count, float minDistance) {
+    std::vector<Target> targets;
+    
+    for (int i = 0; i < count; i++) {
+        glm::vec3 newPos;
+        bool validPosition = false;
+        int attempts = 0;
+        
+        while (!validPosition && attempts < 100) {
+            newPos = glm::vec3(
+                randomFloat(-4.0f, 4.0f),  
+                randomFloat(-2.0f, 2.0f),  
+                randomFloat(-10.0f, -5.0f)  
+            );
+            
+            validPosition = true;
+            
+            for (const auto& target : targets) {
+                float distance = glm::length(newPos - target.position);
+                if (distance < minDistance) {
+                    validPosition = false;
+                    break;
+                }
+            }
+            attempts++;
+        }
+        
+        targets.push_back({newPos});
+    }
+    
+    return targets;
+}
 
 const char* vertexShaderSource = R"(
 #version 330 core
@@ -137,47 +184,42 @@ int main() {
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
 
     float vertices[] = {
-        -0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,  
-        0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,  
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f, 
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f, 
-        -0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f, 
-        -0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
-        
-        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-        
-        -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-
-        0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,   1.0f, 1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,   1.0f, 1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 0.0f,
-
-        -0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,
-
-        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,   1.0f, 0.2f, 0.2f,  
+         0.5f, -0.5f,  0.5f,   1.0f, 0.2f, 0.2f,  
+         0.5f,  0.5f,  0.5f,   1.0f, 0.2f, 0.2f, 
+         0.5f,  0.5f,  0.5f,   1.0f, 0.2f, 0.2f, 
+        -0.5f,  0.5f,  0.5f,   1.0f, 0.2f, 0.2f, 
+        -0.5f, -0.5f,  0.5f,   1.0f, 0.2f, 0.2f,
+        -0.5f, -0.5f, -0.5f,   0.8f, 0.1f, 0.1f,
+         0.5f, -0.5f, -0.5f,   0.8f, 0.1f, 0.1f,
+         0.5f,  0.5f, -0.5f,   0.8f, 0.1f, 0.1f,
+         0.5f,  0.5f, -0.5f,   0.8f, 0.1f, 0.1f,
+        -0.5f,  0.5f, -0.5f,   0.8f, 0.1f, 0.1f,
+        -0.5f, -0.5f, -0.5f,   0.8f, 0.1f, 0.1f,
+        -0.5f,  0.5f,  0.5f,   0.9f, 0.15f, 0.15f,
+        -0.5f,  0.5f, -0.5f,   0.9f, 0.15f, 0.15f,
+        -0.5f, -0.5f, -0.5f,   0.9f, 0.15f, 0.15f,
+        -0.5f, -0.5f, -0.5f,   0.9f, 0.15f, 0.15f,
+        -0.5f, -0.5f,  0.5f,   0.9f, 0.15f, 0.15f,
+        -0.5f,  0.5f,  0.5f,   0.9f, 0.15f, 0.15f,
+         0.5f,  0.5f,  0.5f,   0.9f, 0.15f, 0.15f,
+         0.5f,  0.5f, -0.5f,   0.9f, 0.15f, 0.15f,
+         0.5f, -0.5f, -0.5f,   0.9f, 0.15f, 0.15f,
+         0.5f, -0.5f, -0.5f,   0.9f, 0.15f, 0.15f,
+         0.5f, -0.5f,  0.5f,   0.9f, 0.15f, 0.15f,
+         0.5f,  0.5f,  0.5f,   0.9f, 0.15f, 0.15f,
+        -0.5f,  0.5f, -0.5f,   1.0f, 0.3f, 0.3f,
+         0.5f,  0.5f, -0.5f,   1.0f, 0.3f, 0.3f,
+         0.5f,  0.5f,  0.5f,   1.0f, 0.3f, 0.3f,
+         0.5f,  0.5f,  0.5f,   1.0f, 0.3f, 0.3f,
+        -0.5f,  0.5f,  0.5f,   1.0f, 0.3f, 0.3f,
+        -0.5f,  0.5f, -0.5f,   1.0f, 0.3f, 0.3f,
+        -0.5f, -0.5f, -0.5f,   0.7f, 0.1f, 0.1f,
+         0.5f, -0.5f, -0.5f,   0.7f, 0.1f, 0.1f,
+         0.5f, -0.5f,  0.5f,   0.7f, 0.1f, 0.1f,
+         0.5f, -0.5f,  0.5f,   0.7f, 0.1f, 0.1f,
+        -0.5f, -0.5f,  0.5f,   0.7f, 0.1f, 0.1f,
+        -0.5f, -0.5f, -0.5f,   0.7f, 0.1f, 0.1f,
     };
 
     unsigned int VBO, VAO;
@@ -278,6 +320,7 @@ int main() {
 
     glDeleteShader(chVertexShader);
     glDeleteShader(chFragmentShader);
+    std::vector<Target> targets = spawnTargets(5, 2.0f);
 
     glEnable(GL_DEPTH_TEST);
     
@@ -302,10 +345,6 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(shaderProgram);
 
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, -5.0f));
-        float time = glfwGetTime();
-        model = glm::rotate(model, time, glm::vec3(0.5f, 1.0f, 0.0f));
         glm::mat4 view = glm::lookAt(
             cameraPos,
             cameraPos + cameraFront,
@@ -320,12 +359,6 @@ int main() {
         );
 
         glUniformMatrix4fv(
-            glGetUniformLocation(shaderProgram, "model"), 
-            1, 
-            GL_FALSE, 
-            glm::value_ptr(model)
-        );
-        glUniformMatrix4fv(
             glGetUniformLocation(shaderProgram, "view"),
             1, GL_FALSE, glm::value_ptr(view)
         );
@@ -335,7 +368,17 @@ int main() {
         );
 
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        for (const auto& target : targets) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, target.position);
+            glUniformMatrix4fv(
+                glGetUniformLocation(shaderProgram, "model"), 
+                1, 
+                GL_FALSE, 
+                glm::value_ptr(model)
+            );
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
 
         glDisable(GL_DEPTH_TEST); 
         glUseProgram(crosshairShader);

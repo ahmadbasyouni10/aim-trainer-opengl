@@ -19,7 +19,6 @@ float randomFloat(float min, float max) {
     return dist(gen);
 }
 
-// Need to change this to make sure x and y never intersect like even slightly but still close like with space how kovaaks does it
 std::vector<Target> spawnTargets(int count, float minDistance) {
     std::vector<Target> targets;
     
@@ -30,7 +29,7 @@ std::vector<Target> spawnTargets(int count, float minDistance) {
         
         while (!validPosition && attempts < 100) {
             newPos = glm::vec3(
-                randomFloat(-4.0f, 4.0f),  
+                randomFloat(-3.0f, 3.0f),  
                 randomFloat(-2.5f, 2.5f),   
                 -8.0f                       
             );
@@ -194,12 +193,29 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
                 score++;
                 std::cout << "HIT! Score: " << score << std::endl;
                 
-                target.position = glm::vec3(
-                    randomFloat(-4.0f, 4.0f),
-                    randomFloat(-2.5f, 2.5f),
-                    -8.0f
-                );
-                
+                glm::vec3 newPos;
+                bool validPosition = false;
+                int attempts = 0;
+                while (!validPosition && attempts < 100) {
+                    newPos = glm::vec3(
+                        randomFloat(-3.0f, 3.0f),  
+                        randomFloat(-2.5f, 2.5f),   
+                        -8.0f                       
+                    );
+                    
+                    validPosition = true;
+                    
+                    for (size_t j = 0; j < targetsPtr->size(); j++) {
+                        if (j == i) continue; 
+                        float distance = glm::length(newPos - (*targetsPtr)[j].position);
+                        if (distance < 2.0f) { 
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+                target.position = newPos;
                 break; 
             }
         }
